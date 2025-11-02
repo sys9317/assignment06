@@ -32,7 +32,7 @@ MAE <- mean(error_absolute)
 
 ## Exercise 02
 ```{r}
-
+knitr::include_graphics("exercise2.jpg")
 ```
 
 
