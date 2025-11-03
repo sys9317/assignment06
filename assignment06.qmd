@@ -35,4 +35,8 @@ MAE <- mean(error_absolute)
 knitr::include_graphics("exercise2.jpg")
 ```
 
+## Exercise 03
+```{r}
+knitr::include_graphics("exercise3.jpg")
+```
 
