@@ -1,4 +1,6 @@
 # assignment06
+This my work for assignment 06 which covers classification, metrics,
+and concepts of maching learning.
 
 From exercise 1 to 3, I have used knitr::include_graphics() function to show
 how I calculated MSE, RMSE, MAE, confusion matrix, accuracy, precision and 
