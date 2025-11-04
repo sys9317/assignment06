@@ -1,9 +1,10 @@
 ---
-title: "assignment06"
+title: "Assignment06"
 author: "Yosup Shin"
-format: html
+format: 
+  html:
+    embed-resources: true
 editor: visual
-embed-resources: true
 ---
 
 ```{r message=FALSE}
@@ -50,7 +51,7 @@ Moreover, when the observations/data are significantly imbalanced, such as 99% v
 Therefore, in imbalanced datasets, we must look at other metrics such as precision, recall when you conduct supervised machine learning tasks.
 
 ## Exercise 05
-```{r message=FALSE}
+```{r message=FALSE, warning=FALSE}
 library(readxl)
 library(rsample)
 
