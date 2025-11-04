@@ -134,6 +134,16 @@ cart_fit <- cart_wf |>
 
 rpart.plot::rpart.plot(x = cart_fit$fit$fit$fit)
 
+# Part 6
+# It seems like my predicion from part 2 and this decision tree is slightly
+# different, and I believe it is because I splited my testing and training data
+# by myself using prop = 0.8. This randomly splits my data into two dataset,
+# which are 100 of randomly selected marbles into training dataset and 
+# 25 marbles into testing dataset, so it does not account how does my initial 
+# marbles dataset look like. However, the decision tree accounts 
+# the testing set, which means it considers the frequencies of colors and
+# also size of marbles to generate the decision tree by itself. 
+
 ```
 
 
