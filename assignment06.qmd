@@ -65,7 +65,7 @@ testing_set <- testing(marbles_split)
 # Part 2 
 library(ggplot2)
 
-marbles_count <- marbles |>
+marbles_count <- training_set |>
   count(color, size)
 
 marbles_count
@@ -82,8 +82,8 @@ ggplot(marbles_count, aes(x = size, y = color, fill = n)) +
   ) +
   theme_minimal()
 
-# In the dataset, we have 65 black marbles in total out of 125 marbles, and
-# 54 of them are big and 11 of them are small.
+# In the training dataset, we have 52 black marbles in total out of 100 marbles, and
+# 42 of them are big and 10 of them are small.
 
 # Part 3
 color_prediction <- function(size) {
