@@ -3,6 +3,7 @@ title: "assignment06"
 author: "Yosup Shin"
 format: html
 editor: visual
+embed-resources: true
 ---
 
 ```{r message=FALSE}
