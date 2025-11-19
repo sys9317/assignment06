@@ -1,0 +1,12 @@
+---
+title: "assignment07"
+author: "Yosup Shin"
+format: html
+editor: visual
+---
+
+## Problem 1
+```{r}
+
+```
+
