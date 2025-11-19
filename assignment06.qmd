@@ -1,17 +1,19 @@
 ---
-title: "assignment06"
+title: "Assignment06"
 author: "Yosup Shin"
-format: html
+format: 
+  html:
+    embed-resources: true
 editor: visual
 ---
 
-```{r}
+```{r message=FALSE}
 library(tidyverse)
-library(readxl)
 library(dplyr)
 ```
 
 ## Exercise 01
+
 ```{r}
 knitr::include_graphics("error_calculatiuons.jpg")
 
@@ -31,12 +33,120 @@ MAE <- mean(error_absolute)
 ```
 
 ## Exercise 02
+
 ```{r}
 knitr::include_graphics("exercise2.jpg")
 ```
 
 ## Exercise 03
+
 ```{r}
 knitr::include_graphics("exercise3.jpg")
 ```
 
+## Exercise 04
+
+When 0.49 of observations have a value of 0 and 0.51 of observations of 1, that means 49 observations have a value of 0 and 51 observations have a value of 1 when the entire population is 100. In this case, I believe the accuracy of simply guessing the same value for all observations would be 51% since the majority value is 1, and it appears with probability of 0.51.
+
+On the other hand, when 0.99 of observations have a value of 0 and 0.01 of observations have a value of 1, our expected accuracy of guessing the same value would be approximately 99% since 0.99 of observations have a value of 0.
+
+Looking at both cases, they tell why is it very important to understand how data/sample is constructed. When the observations are pretty balanced like first case, the approximate accuracy does not tell significant context since it is barely better than random guessing (such as 50/50). Moreover, when the observations/data are significantly imbalanced, such as 99% vs 1%, the approximate accuracy would be very high. However, this accurately predicts only one case, which is when the observation has a value of 0, and it fails to detect other outcomes. This example demonstrates the accuracy paradox which means that finding out the model with high accuracy can be misleading and actually have lower predictive power, especially when we have significantly imbalanced datasets Therefore, in imbalanced datasets, we must look at other metrics such as precision, recall when you conduct supervised machine learning tasks.
+
+## Exercise 05
+
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(rsample)
+
+# Part 1
+marbles <- read.csv("data/marbles.csv")
+
+set.seed(20200229)
+
+marbles_split <- initial_split(data = marbles, prop = 0.8)
+training_set <- training(marbles_split)
+testing_set <- testing(marbles_split)
+
+# Part 2 
+library(ggplot2)
+
+marbles_count <- training_set |>
+  count(color, size)
+
+marbles_count
+
+ggplot(marbles_count, aes(x = size, y = color, fill = n)) +
+  geom_tile(color = "white", linewidth = 1) +
+  geom_text(aes(label = n), color = "black", size = 5) + 
+  scale_fill_gradient(low = "white", high = "skyblue") +
+  labs(
+    title = "Marbles distribution",
+    x = "marbles size",
+    y = "marbles color",
+    fill = "count"
+  ) +
+  theme_minimal()
+
+# In the training dataset, we have 52 black marbles in total out of 100 marbles, and
+# 42 of them are big and 10 of them are small.
+
+# Part 3
+color_prediction <- function(size) {
+  ifelse(size == "big", "black", "white")
+}
+
+testing_set$color_prediction <- color_prediction(testing_set$size)
+
+# Part 4
+calculation <- function(color, color_prediction) {
+  accuracy <- sum(color == color_prediction)/length(color)
+  confusion_matrix <- table(y = color, y_hat = color_prediction)
+    
+  return(list(
+  accuracy = accuracy,
+  confusion_matrix = confusion_matrix
+))
+}
+
+calculations <- calculation(
+  color = testing_set$color,
+  color_prediction = testing_set$color_prediction
+)
+
+calculations$accuracy
+calculations$confusion_matrix
+
+# Part 5
+library(tidymodels)
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+
+cart_rec <- 
+  recipe(formula = color ~ ., data = training_set)
+
+cart_mod <- 
+  decision_tree() |>
+  set_engine(engine = "rpart") |>
+  set_mode(mode = "classification")
+
+cart_wf <- workflow() |>
+  add_recipe(cart_rec) |>
+  add_model(cart_mod)
+
+cart_fit <- cart_wf |>
+  fit(data = training_set)
+
+rpart.plot::rpart.plot(x = cart_fit$fit$fit$fit)
+
+# Part 6
+# It seems like my predicion from part 2 and this decision tree is slightly
+# different, and I believe it is because I splited my testing and training data
+# by myself using prop = 0.8. This randomly splits my data into two dataset,
+# which are 100 of randomly selected marbles into training dataset and 
+# 25 marbles into testing dataset, so it does not account how does my initial 
+# marbles dataset look like. However, the decision tree accounts 
+# the testing set, which means it considers the frequencies of colors and
+# also size of marbles to generate the decision tree by itself. 
+
+```
