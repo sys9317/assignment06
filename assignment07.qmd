@@ -1,12 +1,102 @@
 ---
 title: "assignment07"
 author: "Yosup Shin"
-format: html
+format: 
+  html:
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+  error: false
 editor: visual
 ---
 
-## Problem 1
+## Exercise 1
+
 ```{r}
+library(tidyverse)
+library(lubridate)
+library(janitor)
+
+# use this url to download the data directly into R
+df <- read_csv("https://data.cityofnewyork.us/api/views/43nn-pn8j/rows.csv")
+
+# clean names with janitor
+sampled_df <- df |> 
+  janitor::clean_names() 
+
+# create an inspection year variable
+sampled_df <- sampled_df |>
+  mutate(inspection_date = mdy(inspection_date)) |>
+  mutate(inspection_year = year(inspection_date))
+
+# get most-recent inspection
+sampled_df <- sampled_df |>
+  group_by(camis) |>
+  filter(inspection_date == max(inspection_date)) |>
+  ungroup()
+
+# subset the data
+sampled_df <- sampled_df |>
+  select(camis, boro, zipcode, cuisine_description, inspection_date,
+         action, violation_code, violation_description, grade,
+         inspection_type, latitude, longitude, council_district,
+         census_tract, inspection_year, critical_flag) |>
+  drop_na() |>
+  filter(inspection_year >= 2017) |>
+  filter(grade %in% c("A", "B", "C")) 
+
+# create the binary target variable
+sampled_df <- sampled_df |>
+  mutate(grade = if_else(grade == "A", "A", "Not A")) |>
+  mutate(grade = as.factor(grade))
+
+# create extra predictors
+sampled_df <- sampled_df |>
+  group_by(boro, zipcode, cuisine_description, inspection_date,
+           action, violation_code, violation_description, grade,
+           inspection_type, latitude, longitude, council_district,
+           census_tract, inspection_year)  |>
+  mutate(vermin = str_detect(violation_description, pattern = "mice|rats|vermin|roaches")) |>
+  summarize(violations = n(),
+            vermin_types = sum(vermin),
+            critical_flags = sum(critical_flag == "Y")) |>
+  ungroup()
+
+# write the data
+write_csv(sampled_df, "restaurant_grades.csv")
+
+# set seed
+library(tidymodels)
+set.seed(20201020)
+split <- initial_split(sampled_df, 
+                       prop = 0.7, 
+                       strata = "grade")
+
+df_train <- training(split)
+df_test <- testing(split)
+
+library(themis)
+
+df_rec <- recipe(grade ~ ., data = df_train) |> 
+  step_downsample(grade)
+
+library(rpart)
+library(rpart.plot)
+
+# Model specification
+tree_spec <- decision_tree(mode = "classification") |>
+  set_engine("rpart")
+
+# Workflow
+tree_wf <- workflow() %>% 
+  add_model(tree_spec) %>% 
+  add_recipe(df_rec)
+
+# Fit on training data
+tree_fit <- fit(tree_wf, data = df_train)
+
+rpart.plot::rpart.plot(x = tree_fit$fit$fit$fit)
+
 
 ```
-
