@@ -121,7 +121,12 @@ recall(data = predictions,
        truth = grade,
        estimate = .pred_class)
 
+# qulity of the model
+# Looking at the decision tree, I'd say the model is underfitting and needs improvements since the decision tree is extremely shallow and relies on only one or two splits, which means it cannot capture the complexity of how multiple inspection variables jointly predict restaurant grades.
+
 ## 3. Improvement
+# The very simple decision tree suggests that the model is underfitting, which could explain why precision is extremely high but recall is noticeably lower.
+# Using more flexible algorithms like random forests would capture richer interactions between different variables reducing false negatives. Additionally, improving feature engineering—such as adding interaction terms, creating counts of violation categories, or using tuned hyperparameters like tree depth and minimum split size—would likely improve recall while maintaining strong precision.
 
 ## 4. Variable Importance
 library(vip)
@@ -131,8 +136,99 @@ tree_fit |>
   vip(num_features = 10)
 
 ## 5. Application
-
+# The NYC Health Department can predict which establishments are more likely to receive lower grades using an improved and enhanced model. This would allow the department to more effectively allocate inspection resources and promote compliance prior to violations
 ```
 
+## Exercise 2
 
+```{r}
+Chicago_modeling <- Chicago |>
+slice(1:5678)
+
+Chicago_implementation <- Chicago |>
+slice(5679:5698) |>
+select(-ridership)
+
+## 1. Convert data into a useable variable
+Chicago_modeling <- Chicago_modeling |>
+  mutate(
+  weekday = wday(date, label = TRUE),
+  month = month(date, label = TRUE),
+  yearday = yday(date)
+  )
+
+## 2. Set up a testing environment
+set.seed(20211101)
+
+Chicago_split <- initial_split(Chicago_modeling)
+Chicago_train <- training(Chicago_split)
+Chicago_test <- testing(Chicago_split)
+
+# Explanatory data analysis
+glimpse(Chicago_train)
+
+Chicago_train |>
+  summarise(
+    mean_ridership = mean(ridership, na.rm = TRUE),
+    minimum_ride = min(ridership, na.rm = TRUE),
+    maximum_ride = max(ridership, na.rm = TRUE)
+  )
+
+Chicago_train |>
+  ggplot(aes(x = month, y = ridership)) +
+   geom_boxplot()
+
+Chicago_train |>
+  ggplot(aes(x = weekday, y = ridership)) +
+   geom_boxplot()
+
+Chicago_folds <- vfold_cv(
+  Chicago_train,
+  v = 10
+)
+
+library(recipes)
+
+Chicago_rec <- recipe(ridership ~, data = Chicago_train) |>
+  step_holiday(holidays = timeDate::listHolidays("US")) |>
+# or step_holiday(all_predictors())
+  step_dummy(all_nominal_predictors()) |>
+  step_nzv(all_predictors()) |>
+  step_log(all_outcomes(), base = 10)
+
+# Three models 
+library(parsnip)
+# Linear regression
+lm_chicago <- linear_reg() |>
+  set_engine("lm")
+
+lm_wf <- workflow() |>
+  add_recipe(lm_chicago) |>
+  add_model(Chicago_rec) 
+
+??fit_resamples()
+# KNN regression
+knn_Chicago50 <- 
+  nearest_neighbor(neighbors = 50) |>
+  set_engine(engine = "kknn") |>
+  set_mode(mode = "regression") |>
+  fit(formula = y ~ x, data = Chicago_train)
+
+knn_wf <- workflow() |>
+  add_model(knn_Chicago50) |>
+  add_recipe(Chicago_rec)
+
+# Random forest
+rf_Chicago <- rand_forest(
+  mtry = tune(),
+  min_n = tune(),
+  trees = 400
+) |>
+  set_mode("regression") |>
+  set_engine("ranger",
+             importance = "impurity")
+
+rf_wf <- workflow() |>
+  add_model(rf_Chicago) |>
+  add_recipe(Chicago_rec)
 ```
