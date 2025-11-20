@@ -66,6 +66,7 @@ sampled_df <- sampled_df |>
 # write the data
 write_csv(sampled_df, "restaurant_grades.csv")
 
+## Estimating the model
 # set seed
 library(tidymodels)
 set.seed(20201020)
@@ -84,7 +85,8 @@ df_rec <- recipe(grade ~ ., data = df_train) |>
 library(rpart)
 library(rpart.plot)
 
-# Model specification
+
+# 1. Model specification
 tree_spec <- decision_tree(mode = "classification") |>
   set_engine("rpart")
 
@@ -97,6 +99,40 @@ tree_wf <- workflow() %>%
 tree_fit <- fit(tree_wf, data = df_train)
 
 rpart.plot::rpart.plot(x = tree_fit$fit$fit$fit)
+
+## 2. Evaluate the Model
+predictions <- bind_cols(
+  df_train,
+  predict(object = tree_fit, new_data = df_train),
+  predict(object = tree_fit, new_data = df_train, type = "prob")
+)
+
+select(predictions, grade, starts_with(".pred"))
+
+conf_mat(data = predictions,
+         truth = grade,
+         estimate = .pred_class,)
+
+precision(data = predictions,
+          truth = grade,
+          estimate = .pred_class)
+
+recall(data = predictions,
+       truth = grade,
+       estimate = .pred_class)
+
+## 3. Improvement
+
+## 4. Variable Importance
+library(vip)
+
+tree_fit |>
+  extract_fit_parsnip() |>
+  vip(num_features = 10)
+
+## 5. Application
+
+```
 
 
 ```
