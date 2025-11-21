@@ -9,6 +9,8 @@ execute:
   message: false
   error: false
 editor: visual
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Exercise 1
@@ -157,6 +159,13 @@ Chicago_modeling <- Chicago_modeling |>
   yearday = yday(date)
   )
 
+Chicago_implementation <- Chicago_implementation |> 
+   mutate(
+  weekday = wday(date, label = TRUE),
+  month = month(date, label = TRUE),
+  yearday = yday(date)
+  )
+
 ## 2. Set up a testing environment
 set.seed(20211101)
 
@@ -189,12 +198,12 @@ Chicago_folds <- vfold_cv(
 
 library(recipes)
 
-Chicago_rec <- recipe(ridership ~, data = Chicago_train) |>
+Chicago_rec <- recipe(ridership ~ ., data = Chicago_train) |>
   step_holiday(holidays = timeDate::listHolidays("US")) |>
 # or step_holiday(all_predictors())
   step_dummy(all_nominal_predictors()) |>
   step_nzv(all_predictors()) |>
-  step_log(all_outcomes(), base = 10)
+  step_zv(all_predictors()) 
 
 # Three models 
 library(parsnip)
@@ -203,26 +212,40 @@ lm_chicago <- linear_reg() |>
   set_engine("lm")
 
 lm_wf <- workflow() |>
-  add_recipe(lm_chicago) |>
-  add_model(Chicago_rec) 
+  add_recipe(Chicago_rec) |>
+  add_model(lm_chicago) 
 
-??fit_resamples()
+lm_resample <- fit_resamples(
+  lm_wf,
+  resamples = Chicago_folds,
+  metrics = metric_set(rmse)
+)
+
 # KNN regression
+library(kknn)
+
 knn_Chicago50 <- 
   nearest_neighbor(neighbors = 50) |>
   set_engine(engine = "kknn") |>
-  set_mode(mode = "regression") |>
-  fit(formula = y ~ x, data = Chicago_train)
+  set_mode(mode = "regression") 
 
 knn_wf <- workflow() |>
   add_model(knn_Chicago50) |>
   add_recipe(Chicago_rec)
 
+knn_resample <- fit_resamples(
+  knn_wf,
+  resamples = Chicago_folds,
+  metrics = metric_set(rmse)
+)
+
 # Random forest
+library(ranger)
+
 rf_Chicago <- rand_forest(
   mtry = tune(),
   min_n = tune(),
-  trees = 400
+  trees = 300
 ) |>
   set_mode("regression") |>
   set_engine("ranger",
@@ -231,4 +254,81 @@ rf_Chicago <- rand_forest(
 rf_wf <- workflow() |>
   add_model(rf_Chicago) |>
   add_recipe(Chicago_rec)
+
+rf_grid <- grid_regular(
+  mtry(range = c(1, 5)),
+  min_n(range = c(1, 5)),
+  levels = 3
+)
+
+rf_resample <- tune_grid(
+  rf_wf, 
+  resamples = Chicago_folds,
+  grid = rf_grid,
+  metrics = metric_set(rmse)
+)
+
+# Calculate RMSE 
+
+lm_rmse <- collect_metrics(lm_resample, summarize = FALSE) |>
+  filter(.metric == "rmse") 
+
+knn_rmse <- collect_metrics(knn_resample, summarize = FALSE) |>
+  filter(.metric == "rmse") 
+
+rf_rmse <- collect_metrics(rf_resample, summarize = FALSE) |>
+  filter(.metric == "rmse")
+
+lm_mean_rmse  <- mean(lm_rmse$.estimate)
+knn_mean_rmse <- mean(knn_rmse$.estimate)
+rf_mean_rmse  <- mean(rf_rmse$.estimate)
+
+ggplot(lm_rmse, aes(x = id, y = .estimate)) +
+  geom_point() +
+  labs(title = "RMSE across folds – Linear regression",
+       x = "Fold", y = "RMSE") +
+  theme_minimal()
+
+ggplot(knn_rmse, aes(x = id, y = .estimate)) +
+  geom_point() +
+  labs(title = "RMSE across folds – KNN regression",
+       x = "Fold", y = "RMSE") +
+  theme_minimal()
+
+ggplot(rf_rmse, aes(x = id, y = .estimate)) +
+  geom_point() +
+  labs(title = "RMSE across folds – Random Forest",
+       x = "Fold", y = "RMSE") +
+  theme_minimal()
+
+final_wf <- 
+  rf_wf |> 
+  finalize_workflow(select_best(rf_resample))
+
+## 4. Estimate the out-of-sample error rate
+
+final_rf_fit <- final_wf |>
+  last_fit(Chicago_split) 
+
+test_predictions <- collect_predictions(final_rf_fit)
+head(test_predictions)
+
+rmse(test_predictions,
+     truth = ridership,
+     estimate = .pred)
+
+## 5. Implement the final model
+implementation_pred <- predict(extract_workflow(final_rf_fit), Chicago_implementation)
+
+implementation_pred
+
+
+## 6. Briefly describe the final model
+final_rf_vip <- extract_fit_parsnip(final_rf_fit)
+vip(final_rf_vip)
+
+# My final model is a tuned random forest it achieved the lowest average RMSE during cross-validation and also produced a low out-of-sample RMSE on the testing set as well. 
+# Based on this reesult, the model appears to be a good predictive model that generalizes well to new observations, including the 20 held-out implementation cases. However, they are not globally interpretable, because their predictions combine information from many trees and do not follow a single, simple rule. 
+# Nevertheless, they are locally interpretable, so I may look at local explanations (such partial dependence) or variable-importance scores to see which predictors affected a particular prediction.  The weekday and seasonal variables were among the most significant predictors in my model, which is consistent with the strong weekly and seasonal trends in public transportation ridership.  
+# The model does well overall in terms of accuracy, but because of its ensemble structure, interpretability is sacrificed.
 ```
