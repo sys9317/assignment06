@@ -1,4 +1,4 @@
-# assignment06
+## assignment06
 
 This assignment walks through a series of exercises focused on error measurement, 
 data exploration, prediction, and model building in R. After loading tidyverse 
@@ -17,7 +17,7 @@ can be misleading. Exercise 05 loads a marbles dataset, creates an 80/20
  from the training set.
  Lastly, the decision tree shows how the R software makes prediction.
 
- Assignment 07
+## Assignment 07
  This repository contains the full workflow for two applied machine-learning 
  exercises completed using the tidymodels framework in R including 
  model training, cross-validation, evalation, and prediction.
